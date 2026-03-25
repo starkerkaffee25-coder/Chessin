@@ -101,7 +101,7 @@ const blackBar = document.getElementById("evalBarBlack")
 const evalTextWhite = document.getElementById("evalTextWhite")
 const evalTextBlack = document.getElementById("evalTextBlack")
 
-const playerColor = BLACK
+const playerColor = WHITE
 
 const BOT_MAX_DEPTH = 18
 const BOT_THINK_DELAY = 50
@@ -1368,26 +1368,26 @@ let promotionUI = null
 
 function updateEvalOrientation() {
   if (playerColor === WHITE) {
-    evalContainer.classList.add("eval-white-top")
-    evalContainer.classList.remove("eval-white-bottom")
-
-    evalTextWhite.style.top = "5px"
-    evalTextWhite.style.bottom = "auto"
-    evalTextWhite.style.color = "black"
-
-    evalTextBlack.style.bottom = "5px"
-    evalTextBlack.style.top = "auto"
-    evalTextBlack.style.color = "white"
-  } else {
     evalContainer.classList.add("eval-white-bottom")
     evalContainer.classList.remove("eval-white-top")
 
-    evalTextWhite.style.bottom = "5px"
+    evalTextWhite.style.top = "5px"
     evalTextWhite.style.top = "auto"
     evalTextWhite.style.color = "black"
 
-    evalTextBlack.style.top = "5px"
+    evalTextBlack.style.bottom = "5px"
     evalTextBlack.style.bottom = "auto"
+    evalTextBlack.style.color = "white"
+  } else {
+    evalContainer.classList.add("eval-white-top")
+    evalContainer.classList.remove("eval-white-bottom")
+
+    evalTextWhite.style.bottom = "5px"
+    evalTextWhite.style.bottom = "auto"
+    evalTextWhite.style.color = "black"
+
+    evalTextBlack.style.top = "5px"
+    evalTextBlack.style.top = "auto"
     evalTextBlack.style.color = "white"
   }
 }
