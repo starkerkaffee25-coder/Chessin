@@ -1,94 +1,91 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.6">
-<title>Xadrez</title>
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=0.6" />
+<title>Xadrez Base</title>
 <style>
-body{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-  background:#222;
-}
-canvas{
-  box-shadow:0 0 20px black;
-}
-#evalBarContainer{
-  width: 30px;
-  height: 640px;
-  margin-right: 10px;
-  display: flex;
-  border: 2px solid #111;
-  position: relative;
-}
-.eval-white-bottom{
-  flex-direction: column;
-}
+  :root {
+    --bg: #222;
+    --shadow: rgba(0,0,0,.85);
+    --light: #EEEED2;
+    --dark: #769656;
+  }
 
-.eval-white-top{
-  flex-direction: column-reverse;
-}
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: var(--bg);
+    margin: 0;
+  }
 
-#evalBarWhite{
-  background: #EEE;
-  width: 100%;
-}
+  canvas {
+    box-shadow: 0 0 20px var(--shadow);
+  }
 
-#evalBarBlack{
-  background: #111;
-  width: 100%;
-}
-#evalBarWhite,
-#evalBarBlack{
-  transition: height 0.5s ease-out;
-}
+  #evalBarContainer {
+    width: 30px;
+    height: 640px;
+    margin-right: 10px;
+    display: flex;
+    border: 2px solid #111;
+    position: relative;
+    overflow: hidden;
+  }
 
-#promotionBox{
-  position:absolute;
-  display:none;
-  background:#2b2b2b;
-  border-radius:10px;
-  padding:6px;
-  box-shadow:0 0 15px rgba(0,0,0,0.7);
-  z-index:10;
-}
+  .eval-white-top { flex-direction: column; }
+  .eval-white-bottom { flex-direction: column-reverse; }
 
-.promoPiece{
-  width:60px;
-  height:60px;
-  cursor:pointer;
-  display:block;
-  margin:4px;
-}
+  #evalBarWhite,
+  #evalBarBlack {
+    width: 100%;
+    transition: height 0.5s ease-out;
+  }
 
-.promoPiece:hover{
-  background:#444;
-  border-radius:6px;
-}
+  #evalBarWhite { background: #EEE; }
+  #evalBarBlack { background: #111; }
 
+  #promotionBox {
+    position: absolute;
+    display: none;
+    background: #2b2b2b;
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.7);
+    z-index: 10;
+  }
+
+  .promoPiece {
+    width: 60px;
+    height: 60px;
+    cursor: pointer;
+    display: block;
+    margin: 4px;
+  }
+
+  .promoPiece:hover {
+    background: #444;
+    border-radius: 6px;
+  }
 </style>
 </head>
-
 <body>
+  <div id="evalBarContainer">
+    <div id="evalBarWhite"></div>
+    <div id="evalBarBlack"></div>
+    <div id="evalTextWhite" style="position:absolute; top:5px; width:30px; text-align:center; font-size:12px; color:black;"></div>
+    <div id="evalTextBlack" style="position:absolute; bottom:5px; width:30px; text-align:center; font-size:12px; color:white;"></div>
+  </div>
 
-<div id="evalBarContainer">
-  <div id="evalBarWhite"></div>
-  <div id="evalBarBlack"></div>
-  <div id="evalTextWhite" style="position:absolute; top:5px; width:30px; text-align:center; font-size:12px; color:black;"></div>
-  <div id="evalTextBlack" style="position:absolute; bottom:5px; width:30px; text-align:center; font-size:12px; color:white;"></div>
-</div>
-
-<canvas id="board" width="640" height="640"></canvas>
-
-<div id="promotionBox"></div>
+  <canvas id="board" width="640" height="640"></canvas>
+  <div id="promotionBox"></div>
 
 <script>
-/* =========================
-  CONFIG / UI
-========================= */
+/* =========================================================
+   DOM / CONSTANTS
+========================================================= */
 
 const canvas = document.getElementById("board")
 const promoBox = document.getElementById("promotionBox")
@@ -104,20 +101,21 @@ const blackBar = document.getElementById("evalBarBlack")
 const evalTextWhite = document.getElementById("evalTextWhite")
 const evalTextBlack = document.getElementById("evalTextBlack")
 
-const playerColor = Math.floor(Math.random() * 2) === 1 ? BLACK : WHITE;
+const playerColor = BLACK
 
-const BOT_MAX_DEPTH = 12
-const BOT_THINK_DELAY = 100
-const BOT_TIME_LIMIT_MS = 3500
+const BOT_MAX_DEPTH = 18
+const BOT_THINK_DELAY = 50
+const BOT_TIME_LIMIT_MS = 3000
 const ANIM_DURATION = 140
 
 const KNIGHT_OFFSETS = [
-  [1,2],[2,1],[-1,2],[-2,1],
-  [1,-2],[2,-1],[-1,-2],[-2,-1]
+  [1, 2], [2, 1], [-1, 2], [-2, 1],
+  [1, -2], [2, -1], [-1, -2], [-2, -1]
 ]
 
 const KING_OFFSETS = [
-  [1,1],[1,0],[1,-1],[0,1],[0,-1],[-1,1],[-1,0],[-1,-1]
+  [1, 1], [1, 0], [1, -1], [0, 1], [0, -1],
+  [-1, 1], [-1, 0], [-1, -1]
 ]
 
 const ROOK_DIRS = [[1,0],[-1,0],[0,1],[0,-1]]
@@ -129,19 +127,26 @@ const QUEEN_DIRS = [
 
 const inside = (x, y) => x >= 0 && y >= 0 && x < 8 && y < 8
 
-function orient(x, y){
+function orient(x, y) {
   return playerColor === WHITE ? [x, y] : [7 - x, 7 - y]
 }
 
-function formatEval(score){
+function formatEval(score) {
   if (score > 9000) return "+M"
   if (score < -9000) return "-M"
   return (score / 100).toFixed(2)
 }
 
-/* =========================
-  ZOBRIST / HASH
-========================= */
+/* =========================================================
+   SPRITE
+========================================================= */
+
+const sprite = new Image()
+sprite.src = "chess_pieces.png"
+
+/* =========================================================
+   ZOBRIST
+========================================================= */
 
 function mulberry32(seed) {
   let t = seed >>> 0
@@ -155,10 +160,7 @@ function mulberry32(seed) {
 }
 
 const __rand = mulberry32(0xC0FFEE)
-
-function rand32() {
-  return (__rand() * 4294967296) >>> 0
-}
+const rand32 = () => (__rand() * 4294967296) >>> 0
 
 const ZOBRIST = {
   pieces: Array.from({ length: 12 }, () =>
@@ -188,29 +190,138 @@ function epMask(ep) {
 
 function hash(state) {
   let h = 0 >>> 0
-
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
       const p = state.board[y][x]
       if (p) h ^= ZOBRIST.pieces[pieceIndex(p)][y * 8 + x]
     }
   }
-
   if (state.turn === BLACK) h ^= ZOBRIST.turn
   h ^= castleMask(state.castle)
   if (state.enPassant) h ^= epMask(state.enPassant)
-
   return h >>> 0
 }
 
-/* =========================
-  PIECE / PST / STATE
-========================= */
+/* =========================================================
+   BITBOARDS
+========================================================= */
+
+const BB64 = Array.from({ length: 64 }, (_, sq) => 1n << BigInt(sq))
+const KNIGHT_ATTACKS = Array.from({ length: 64 }, () => 0n)
+const KING_ATTACKS = Array.from({ length: 64 }, () => 0n)
+const WHITE_PAWN_ATTACKS = Array.from({ length: 64 }, () => 0n)
+const BLACK_PAWN_ATTACKS = Array.from({ length: 64 }, () => 0n)
+
+function createBitboardsFromBoard(board) {
+  const bb = {
+    pieces: Array(12).fill(0n),
+    white: 0n,
+    black: 0n,
+    all: 0n
+  }
+
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      const p = board[y][x]
+      if (!p) continue
+      const sq = y * 8 + x
+      const mask = BB64[sq]
+      const idx = pieceIndex(p)
+      bb.pieces[idx] |= mask
+      if (idx < 6) bb.white |= mask
+      else bb.black |= mask
+      bb.all |= mask
+    }
+  }
+
+  return bb
+}
+
+function bbAddPiece(bb, p, sq) {
+  const mask = BB64[sq]
+  const idx = pieceIndex(p)
+  bb.pieces[idx] |= mask
+  if (idx < 6) bb.white |= mask
+  else bb.black |= mask
+  bb.all |= mask
+}
+
+function bbRemovePiece(bb, p, sq) {
+  const mask = BB64[sq]
+  const idx = pieceIndex(p)
+  bb.pieces[idx] &= ~mask
+  if (idx < 6) bb.white &= ~mask
+  else bb.black &= ~mask
+  bb.all &= ~mask
+}
+
+function bbMovePiece(bb, p, fromSq, toSq) {
+  const fromMask = BB64[fromSq]
+  const toMask = BB64[toSq]
+  const idx = pieceIndex(p)
+
+  bb.pieces[idx] &= ~fromMask
+  bb.pieces[idx] |= toMask
+
+  if (idx < 6) {
+    bb.white &= ~fromMask
+    bb.white |= toMask
+  } else {
+    bb.black &= ~fromMask
+    bb.black |= toMask
+  }
+
+  bb.all &= ~fromMask
+  bb.all |= toMask
+}
+
+function initAttackTables() {
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      const sq = y * 8 + x
+      let nMask = 0n
+      let kMask = 0n
+      let wPawnMask = 0n
+      let bPawnMask = 0n
+
+      for (const [dx, dy] of KNIGHT_OFFSETS) {
+        const nx = x + dx
+        const ny = y + dy
+        if (inside(nx, ny)) nMask |= BB64[ny * 8 + nx]
+      }
+
+      for (const [dx, dy] of KING_OFFSETS) {
+        const nx = x + dx
+        const ny = y + dy
+        if (inside(nx, ny)) kMask |= BB64[ny * 8 + nx]
+      }
+
+      if (y < 7) {
+        if (x > 0) wPawnMask |= BB64[(y + 1) * 8 + (x - 1)]
+        if (x < 7) wPawnMask |= BB64[(y + 1) * 8 + (x + 1)]
+      }
+
+      if (y > 0) {
+        if (x > 0) bPawnMask |= BB64[(y - 1) * 8 + (x - 1)]
+        if (x < 7) bPawnMask |= BB64[(y - 1) * 8 + (x + 1)]
+      }
+
+      KNIGHT_ATTACKS[sq] = nMask
+      KING_ATTACKS[sq] = kMask
+      WHITE_PAWN_ATTACKS[sq] = wPawnMask
+      BLACK_PAWN_ATTACKS[sq] = bPawnMask
+    }
+  }
+}
+
+/* =========================================================
+   STATE / EVAL
+========================================================= */
 
 const PIECE_VALUE = {
   1: 900,
-  2: 330,
-  3: 320,
+  2: 335,
+  3: 315,
   4: 500,
   5: 100,
   6: 20000
@@ -292,14 +403,16 @@ let state = {
   ],
   turn: WHITE,
   enPassant: null,
-  castle: { wk:true, wq:true, bk:true, bq:true },
-  kingPos: { w:[4,7], b:[4,0] },
+  castle: { wk: true, wq: true, bk: true, bq: true },
+  kingPos: { w: [4,7], b: [4,0] },
   hash: 0,
-  eval: 0
+  eval: 0,
+  bb: null
 }
 
-function pstValue(piece, x, y, sign) {
+function pstValue(piece, x, y) {
   const abs = Math.abs(piece)
+  const sign = Math.sign(piece)
   const py = sign === WHITE ? y : 7 - y
 
   if (abs === 5) return PST.pawn[py][x]
@@ -311,56 +424,78 @@ function pstValue(piece, x, y, sign) {
   return 0
 }
 
+function pieceEval(p, x, y) {
+  if (!p) return 0
+  return (PIECE_VALUE[Math.abs(p)] + pstValue(p, x, y)) * Math.sign(p)
+}
+
 function initEval(state) {
   let score = 0
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
-      const p = state.board[y][x]
-      if (!p) continue
-      const s = Math.sign(p)
-      const a = Math.abs(p)
-      score += PIECE_VALUE[a] * s
-      score += pstValue(p, x, y, s) * s
+      score += pieceEval(state.board[y][x], x, y)
     }
   }
   state.eval = score
 }
 
-/* =========================
-  ATTACK TABLES / CHECK
-========================= */
+/* =========================================================
+   ATTACK / CHECK
+========================================================= */
 
-const KNIGHT_ATTACKS = Array.from({ length: 64 }, () => [])
-const KING_ATTACKS = Array.from({ length: 64 }, () => [])
+function isSquareAttacked(state, x, y, c, ignoreX = -1, ignoreY = -1) {
+  const b = state.board
+  const bb = state.bb || (state.bb = createBitboardsFromBoard(state.board))
+  const enemy = -c
+  const sq = y * 8 + x
 
-function initAttackTables() {
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      const sq = y * 8 + x
-      for (const [dx, dy] of KNIGHT_OFFSETS) {
-        const nx = x + dx, ny = y + dy
-        if (inside(nx, ny)) KNIGHT_ATTACKS[sq].push([nx, ny])
+  const pawnIdx = pieceIndex(5 * enemy)
+  const knightIdx = pieceIndex(3 * enemy)
+  const bishopIdx = pieceIndex(2 * enemy)
+  const rookIdx = pieceIndex(4 * enemy)
+  const queenIdx = pieceIndex(1 * enemy)
+  const kingIdx = pieceIndex(6 * enemy)
+
+  const pawnMask = enemy === WHITE ? WHITE_PAWN_ATTACKS[sq] : BLACK_PAWN_ATTACKS[sq]
+  if ((pawnMask & bb.pieces[pawnIdx]) !== 0n) return true
+  if ((KNIGHT_ATTACKS[sq] & bb.pieces[knightIdx]) !== 0n) return true
+  if ((KING_ATTACKS[sq] & bb.pieces[kingIdx]) !== 0n) return true
+
+  for (let d = 0; d < 4; d++) {
+    const [dx, dy] = ROOK_DIRS[d]
+    let nx = x + dx, ny = y + dy
+    while (inside(nx, ny)) {
+      if (nx === ignoreX && ny === ignoreY) {
+        nx += dx
+        ny += dy
+        continue
       }
-      for (const [dx, dy] of KING_OFFSETS) {
-        const nx = x + dx, ny = y + dy
-        if (inside(nx, ny)) KING_ATTACKS[sq].push([nx, ny])
+      const p = b[ny][nx]
+      if (p !== 0) {
+        if (p === 4 * enemy || p === 1 * enemy) return true
+        break
       }
+      nx += dx
+      ny += dy
     }
   }
-}
 
-function isSquareAttacked(state, x, y, c) {
-  const b = state.board
-  const enemy = -c
-
-  for (let yy = 0; yy < 8; yy++) {
-    for (let xx = 0; xx < 8; xx++) {
-      const p = b[yy][xx]
-      if (p * enemy <= 0) continue
-
-      if (attacksSquare(b, xx, yy, x, y)) {
-        return true
+  for (let d = 0; d < 4; d++) {
+    const [dx, dy] = BISHOP_DIRS[d]
+    let nx = x + dx, ny = y + dy
+    while (inside(nx, ny)) {
+      if (nx === ignoreX && ny === ignoreY) {
+        nx += dx
+        ny += dy
+        continue
       }
+      const p = b[ny][nx]
+      if (p !== 0) {
+        if (p === 2 * enemy || p === 1 * enemy) return true
+        break
+      }
+      nx += dx
+      ny += dy
     }
   }
 
@@ -372,64 +507,410 @@ function isKingInCheck(state, c) {
   return isSquareAttacked(state, kp[0], kp[1], c)
 }
 
-function kingAttack(board, kingX, kingY, attackerSign) {
-  let attack = 0
-  for (let y = kingY - 2; y <= kingY + 2; y++) {
-    for (let x = kingX - 2; x <= kingX + 2; x++) {
-      if (!inside(x, y)) continue
-      const p = board[y][x]
-      if (p * attackerSign <= 0) continue
-      if (Math.abs(x - kingX) <= 2 && Math.abs(y - kingY) <= 2) {
-        if (attacksSquare(board, x, y, kingX, kingY)) attack++
-      }
+function rayClearAfterMove(board, fromX, fromY, toX, toY, kingX, kingY) {
+  const dx = Math.sign(kingX - toX)
+  const dy = Math.sign(kingY - toY)
+  let x = toX + dx
+  let y = toY + dy
+
+  while (x !== kingX || y !== kingY) {
+    if (x === fromX && y === fromY) {
+      x += dx
+      y += dy
+      continue
     }
+    if (board[y][x] !== 0) return false
+    x += dx
+    y += dy
   }
-  return attack
+  return true
 }
 
-function attacksSquare(board, fromX, fromY, toX, toY) {
+function givesCheckAfterMove(state, move, color) {
+  const board = state.board
+  const fromX = move[0], fromY = move[1], toX = move[2], toY = move[3]
   const p = board[fromY][fromX]
   if (!p) return false
 
-  const c = Math.sign(p)
+  const movedColor = p > 0 ? WHITE : BLACK
+  if (movedColor !== color) return false
+
+  const enemyColor = -color
+  const kingPos = enemyColor === WHITE ? state.kingPos.w : state.kingPos.b
+  const kingX = kingPos[0], kingY = kingPos[1]
+  const abs = Math.abs(p)
+  const dx = kingX - toX
+  const dy = kingY - toY
+
+  if (abs === 5) {
+    const dir = color === WHITE ? -1 : 1
+    return (kingY - toY) === dir && Math.abs(kingX - toX) === 1
+  }
+  if (abs === 3) {
+    return (Math.abs(dx) === 1 && Math.abs(dy) === 2) || (Math.abs(dx) === 2 && Math.abs(dy) === 1)
+  }
+  if (abs === 6) {
+    return Math.abs(kingX - toX) <= 1 && Math.abs(kingY - toY) <= 1
+  }
+  if (abs === 4) {
+    if (dx !== 0 && dy !== 0) return false
+    return rayClearAfterMove(board, fromX, fromY, toX, toY, kingX, kingY)
+  }
+  if (abs === 2) {
+    if (Math.abs(dx) !== Math.abs(dy)) return false
+    return rayClearAfterMove(board, fromX, fromY, toX, toY, kingX, kingY)
+  }
+  if (abs === 1) {
+    if (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy)) {
+      return rayClearAfterMove(board, fromX, fromY, toX, toY, kingX, kingY)
+    }
+  }
+  return false
+}
+
+/* =========================================================
+   MOVE GENERATION
+========================================================= */
+
+const MOVE_POOL = Array.from({ length: 64 }, () => [])
+const PSEUDO_POOL = Array.from({ length: 64 }, () => [])
+
+function addPromotions(out, x, y, nx, ny) {
+  out.push([x, y, nx, ny, "promoQ"])
+  out.push([x, y, nx, ny, "promoR"])
+  out.push([x, y, nx, ny, "promoB"])
+  out.push([x, y, nx, ny, "promoN"])
+}
+
+function generateMovesInto(state, x, y, out) {
+  const b = state.board
+  const p = b[y][x]
+  if (!p) return out
+
+  const c = p > 0 ? WHITE : BLACK
   const t = Math.abs(p)
-  const dx = toX - fromX
-  const dy = toY - fromY
 
   if (t === 5) {
     const dir = c === WHITE ? -1 : 1
-    return dy === dir && Math.abs(dx) === 1
+
+    if (inside(x, y + dir) && b[y + dir][x] === 0) {
+      if ((c === WHITE && y + dir === 0) || (c === BLACK && y + dir === 7)) {
+        addPromotions(out, x, y, x, y + dir)
+      } else {
+        out.push([x, y, x, y + dir])
+      }
+
+      if ((c === WHITE && y === 6) || (c === BLACK && y === 1)) {
+        if (b[y + 2 * dir][x] === 0) out.push([x, y, x, y + 2 * dir])
+      }
+    }
+
+    for (const dx of [-1, 1]) {
+      const nx = x + dx
+      const ny = y + dir
+      if (!inside(nx, ny)) continue
+
+      if (b[ny][nx] * c < 0) {
+        if ((c === WHITE && ny === 0) || (c === BLACK && ny === 7)) {
+          addPromotions(out, x, y, nx, ny)
+        } else {
+          out.push([x, y, nx, ny])
+        }
+      }
+
+      if (state.enPassant && state.enPassant.x === nx && state.enPassant.y === ny) {
+        out.push([x, y, nx, ny, "ep"])
+      }
+    }
+    return out
   }
+
   if (t === 3) {
-    return (Math.abs(dx) === 1 && Math.abs(dy) === 2) ||
-           (Math.abs(dx) === 2 && Math.abs(dy) === 1)
+    for (const [dx, dy] of KNIGHT_OFFSETS) {
+      const nx = x + dx
+      const ny = y + dy
+      if (inside(nx, ny) && b[ny][nx] * c <= 0) out.push([x, y, nx, ny])
+    }
+    return out
   }
+
+  if (t === 4 || t === 2 || t === 1) {
+    const dirs = t === 4 ? ROOK_DIRS : t === 2 ? BISHOP_DIRS : QUEEN_DIRS
+    for (const [dx, dy] of dirs) {
+      let nx = x + dx
+      let ny = y + dy
+      while (inside(nx, ny)) {
+        if (b[ny][nx] === 0) {
+          out.push([x, y, nx, ny])
+        } else {
+          if (b[ny][nx] * c < 0) out.push([x, y, nx, ny])
+          break
+        }
+        nx += dx
+        ny += dy
+      }
+    }
+    return out
+  }
+
   if (t === 6) {
-    return Math.abs(dx) <= 1 && Math.abs(dy) <= 1
-  }
-  if (t === 4) {
-    if (dx !== 0 && dy !== 0) return false
-  }
-  if (t === 2) {
-    if (Math.abs(dx) !== Math.abs(dy)) return false
-  }
-  if (t === 1) {
-    if (!(dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy))) return false
+    for (const [dx, dy] of KING_OFFSETS) {
+      const nx = x + dx
+      const ny = y + dy
+      if (inside(nx, ny) && b[ny][nx] * c <= 0) {
+        if (!isSquareAttacked(state, nx, ny, c, x, y)) out.push([x, y, nx, ny])
+      }
+    }
+
+    if (!isKingInCheck(state, c)) {
+      if ((c === WHITE && state.castle.wk) || (c === BLACK && state.castle.bk)) {
+        if (b[y][5] === 0 && b[y][6] === 0 && b[y][7] === 4 * c) {
+          if (!isSquareAttacked(state, 5, y, c, x, y) &&
+              !isSquareAttacked(state, 6, y, c, x, y)) {
+            out.push([x, y, 6, y, "castle"])
+          }
+        }
+      }
+
+      if ((c === WHITE && state.castle.wq) || (c === BLACK && state.castle.bq)) {
+        if (b[y][1] === 0 && b[y][2] === 0 && b[y][3] === 0 && b[y][0] === 4 * c) {
+          if (!isSquareAttacked(state, 3, y, c, x, y) &&
+              !isSquareAttacked(state, 2, y, c, x, y)) {
+            out.push([x, y, 2, y, "castle"])
+          }
+        }
+      }
+    }
   }
 
-  const stepX = Math.sign(dx)
-  const stepY = Math.sign(dy)
-  let x = fromX + stepX
-  let y = fromY + stepY
-
-  while (x !== toX || y !== toY) {
-    if (board[y][x] !== 0) return false
-    x += stepX
-    y += stepY
-  }
-
-  return true
+  return out
 }
+
+function getLegalMoves(state, x, y, ply = 0, out = null) {
+  const pseudo = PSEUDO_POOL[ply]
+  pseudo.length = 0
+  generateMovesInto(state, x, y, pseudo)
+
+  const legal = out || []
+  legal.length = 0
+
+  const p = state.board[y][x]
+  if (!p) return legal
+
+  const abs = Math.abs(p)
+  if (abs === 6) {
+    for (let i = 0; i < pseudo.length; i++) legal.push(pseudo[i])
+    return legal
+  }
+
+  const color = p > 0 ? WHITE : BLACK
+  for (let i = 0; i < pseudo.length; i++) {
+    const m = pseudo[i]
+    const undo = makeMove(state, m)
+    if (!isKingInCheck(state, color)) legal.push(m)
+    undoMove(state, undo)
+  }
+
+  return legal
+}
+
+function getAllMoves(state, color, ply = 0, out = null) {
+  const moves = out || MOVE_POOL[ply]
+  moves.length = 0
+
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      if (state.board[y][x] * color > 0) {
+        const tmp = getLegalMoves(state, x, y, ply)
+        for (let i = 0; i < tmp.length; i++) moves.push(tmp[i])
+      }
+    }
+  }
+
+  return moves
+}
+
+/* =========================================================
+   MAKE / UNDO
+========================================================= */
+
+function makeMove(state, m) {
+  const b = state.board
+  const bb = state.bb || (state.bb = createBitboardsFromBoard(b))
+
+  const fromX = m[0], fromY = m[1], toX = m[2], toY = m[3]
+  const p = b[fromY][fromX]
+  const abs = Math.abs(p)
+  const sign = Math.sign(p)
+
+  const undo = {
+    move: [...m],
+    captured: b[toY][toX],
+    epCaptured: null,
+    promoted: null,
+    oldEnPassant: state.enPassant,
+    oldCastle: { ...state.castle },
+    oldKingPos: { w: [...state.kingPos.w], b: [...state.kingPos.b] },
+    oldEval: state.eval,
+    oldHash: state.hash
+  }
+
+  state.hash ^= ZOBRIST.turn
+  if (state.enPassant) state.hash ^= epMask(state.enPassant)
+  state.hash ^= castleMask(state.castle)
+
+  bbRemovePiece(bb, p, fromY * 8 + fromX)
+  state.eval -= pieceEval(p, fromX, fromY)
+  state.hash ^= ZOBRIST.pieces[pieceIndex(p)][fromY * 8 + fromX]
+  b[fromY][fromX] = 0
+
+  if (undo.captured) {
+    bbRemovePiece(bb, undo.captured, toY * 8 + toX)
+    state.eval -= pieceEval(undo.captured, toX, toY)
+    state.hash ^= ZOBRIST.pieces[pieceIndex(undo.captured)][toY * 8 + toX]
+  }
+
+  if (m[4] === "ep") {
+    const capY = toY + (sign === WHITE ? 1 : -1)
+    undo.epCaptured = b[capY][toX]
+    if (undo.epCaptured) {
+      bbRemovePiece(bb, undo.epCaptured, capY * 8 + toX)
+      state.eval -= pieceEval(undo.epCaptured, toX, capY)
+      state.hash ^= ZOBRIST.pieces[pieceIndex(undo.epCaptured)][capY * 8 + toX]
+      b[capY][toX] = 0
+    }
+  }
+
+  let movingPiece = p
+
+  if (m[4]?.startsWith("promo")) {
+    const map = { promoQ: 1, promoR: 4, promoB: 2, promoN: 3 }
+    movingPiece = sign * map[m[4]]
+    undo.promoted = p
+  }
+
+  b[toY][toX] = movingPiece
+  bbAddPiece(bb, movingPiece, toY * 8 + toX)
+  state.eval += pieceEval(movingPiece, toX, toY)
+  state.hash ^= ZOBRIST.pieces[pieceIndex(movingPiece)][toY * 8 + toX]
+
+  if (abs === 6) {
+    if (sign === WHITE) state.kingPos.w = [toX, toY]
+    else state.kingPos.b = [toX, toY]
+
+    if (sign === WHITE) {
+      state.castle.wk = false
+      state.castle.wq = false
+    } else {
+      state.castle.bk = false
+      state.castle.bq = false
+    }
+  }
+
+  if (fromX === 0 && fromY === 7) state.castle.wq = false
+  if (fromX === 7 && fromY === 7) state.castle.wk = false
+  if (fromX === 0 && fromY === 0) state.castle.bq = false
+  if (fromX === 7 && fromY === 0) state.castle.bk = false
+  if (toX === 0 && toY === 7) state.castle.wq = false
+  if (toX === 7 && toY === 7) state.castle.wk = false
+  if (toX === 0 && toY === 0) state.castle.bq = false
+  if (toX === 7 && toY === 0) state.castle.bk = false
+
+  if (m[4] === "castle") {
+    if (toX === 6) {
+      const rook = b[toY][7]
+      bbMovePiece(bb, rook, toY * 8 + 7, toY * 8 + 5)
+      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 7]
+      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 5]
+      state.eval -= pieceEval(rook, 7, toY)
+      state.eval += pieceEval(rook, 5, toY)
+      b[toY][5] = rook
+      b[toY][7] = 0
+    } else {
+      const rook = b[toY][0]
+      bbMovePiece(bb, rook, toY * 8 + 0, toY * 8 + 3)
+      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 0]
+      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 3]
+      state.eval -= pieceEval(rook, 0, toY)
+      state.eval += pieceEval(rook, 3, toY)
+      b[toY][3] = rook
+      b[toY][0] = 0
+    }
+  }
+
+  if (abs === 5 && Math.abs(toY - fromY) === 2) {
+    const epY = fromY + (sign === WHITE ? -1 : 1)
+    state.enPassant = { x: fromX, y: epY }
+  } else {
+    state.enPassant = null
+  }
+
+  state.hash ^= castleMask(state.castle)
+  if (state.enPassant) state.hash ^= epMask(state.enPassant)
+
+  state.turn = -state.turn
+  return undo
+}
+
+function undoMove(state, undo) {
+  const m = undo.move
+  const b = state.board
+  const bb = state.bb
+  const fromX = m[0], fromY = m[1], toX = m[2], toY = m[3]
+
+  state.turn = -state.turn
+  state.enPassant = undo.oldEnPassant
+  state.castle = undo.oldCastle
+  state.kingPos.w = [...undo.oldKingPos.w]
+  state.kingPos.b = [...undo.oldKingPos.b]
+  state.eval = undo.oldEval
+  state.hash = undo.oldHash
+
+  if (m[4] === "castle") {
+    if (toX === 6) {
+      const rook = b[toY][5]
+      bbMovePiece(bb, rook, toY * 8 + 5, toY * 8 + 7)
+      b[toY][7] = rook
+      b[toY][5] = 0
+    } else {
+      const rook = b[toY][3]
+      bbMovePiece(bb, rook, toY * 8 + 3, toY * 8 + 0)
+      b[toY][0] = rook
+      b[toY][3] = 0
+    }
+  }
+
+  let piece = b[toY][toX]
+
+  if (undo.promoted !== null) {
+    bbRemovePiece(bb, piece, toY * 8 + toX)
+    piece = undo.promoted
+    bbAddPiece(bb, piece, fromY * 8 + fromX)
+  } else {
+    bbMovePiece(bb, piece, toY * 8 + toX, fromY * 8 + fromX)
+  }
+
+  b[fromY][fromX] = piece
+  b[toY][toX] = undo.captured
+
+  if (undo.captured) {
+    bbAddPiece(bb, undo.captured, toY * 8 + toX)
+  }
+
+  if (m[4] === "ep") {
+    const capY = toY + (Math.sign(piece) > 0 ? 1 : -1)
+    b[capY][toX] = undo.epCaptured
+    if (undo.epCaptured) {
+      bbAddPiece(bb, undo.epCaptured, capY * 8 + toX)
+    }
+  }
+}
+
+/* =========================================================
+   SEE / ORDER
+========================================================= */
+
+const SEE_OCC = new Uint8Array(64)
 
 function attacksSquareSEE(board, occupied, fromX, fromY, toX, toY) {
   const p = board[fromY][fromX]
@@ -474,349 +955,14 @@ function attacksSquareSEE(board, occupied, fromX, fromY, toX, toY) {
   return true
 }
 
-/* =========================
-  MOVE GENERATION
-========================= */
-
-const MOVE_POOL = Array.from({ length: 64 }, () => [])
-const PSEUDO_POOL = Array.from({ length: 64 }, () => [])
-
-function addPromotions(out, x, y, nx, ny) {
-  out.push([x, y, nx, ny, "promoQ"])
-  out.push([x, y, nx, ny, "promoR"])
-  out.push([x, y, nx, ny, "promoB"])
-  out.push([x, y, nx, ny, "promoN"])
-}
-
-function generateMovesInto(state, x, y, out) {
-  const b = state.board
-  const p = b[y][x]
-  if (!p) return out
-
-  const c = Math.sign(p)
-  const t = Math.abs(p)
-
-  if (t === 5) {
-    const dir = c === WHITE ? -1 : 1
-
-    if (inside(x, y + dir) && b[y + dir][x] === 0) {
-      if ((c === WHITE && y + dir === 0) || (c === BLACK && y + dir === 7)) {
-        addPromotions(out, x, y, x, y + dir)
-      } else {
-        out.push([x, y, x, y + dir])
-      }
-
-      if ((c === WHITE && y === 6) || (c === BLACK && y === 1)) {
-        if (b[y + 2 * dir][x] === 0) out.push([x, y, x, y + 2 * dir])
-      }
-    }
-
-    for (const dx of [-1, 1]) {
-      const nx = x + dx
-      const ny = y + dir
-      if (!inside(nx, ny)) continue
-
-      if (b[ny][nx] * c < 0) {
-        if ((c === WHITE && ny === 0) || (c === BLACK && ny === 7)) {
-          addPromotions(out, x, y, nx, ny)
-        } else {
-          out.push([x, y, nx, ny])
-        }
-      }
-
-      if (state.enPassant && state.enPassant.x === nx && state.enPassant.y === ny) {
-        out.push([x, y, nx, ny, "ep"])
-      }
-    }
-  }
-
-  if (t === 3) {
-    for (const [dx, dy] of KNIGHT_OFFSETS) {
-      const nx = x + dx
-      const ny = y + dy
-      if (inside(nx, ny) && b[ny][nx] * c <= 0) out.push([x, y, nx, ny])
-    }
-  }
-
-  if (t === 4 || t === 2 || t === 1) {
-    const dirs = t === 4 ? ROOK_DIRS : t === 2 ? BISHOP_DIRS : QUEEN_DIRS
-    for (const [dx, dy] of dirs) {
-      let nx = x + dx
-      let ny = y + dy
-      while (inside(nx, ny)) {
-        if (b[ny][nx] === 0) {
-          out.push([x, y, nx, ny])
-        } else {
-          if (b[ny][nx] * c < 0) out.push([x, y, nx, ny])
-          break
-        }
-        nx += dx
-        ny += dy
-      }
-    }
-  }
-
-  if (t === 6) {
-    for (const [dx, dy] of KING_OFFSETS) {
-      const nx = x + dx
-      const ny = y + dy
-
-      if (inside(nx, ny) && b[ny][nx] * c <= 0) {
-        const move = [x, y, nx, ny]
-        const undo = makeMove(state, move)
-
-        if (!isKingInCheck(state, c)) {
-          out.push(move)
-        }
-
-        undoMove(state, undo)
-      }
-    }
-
-    if (!isKingInCheck(state, c)) {
-      if ((c === WHITE && state.castle.wk) || (c === BLACK && state.castle.bk)) {
-        if (b[y][5] === 0 && b[y][6] === 0 && b[y][7] === 4 * c) {
-          if (!isSquareAttacked(state, 5, y, c) && !isSquareAttacked(state, 6, y, c)) {
-            out.push([x, y, 6, y, "castle"])
-          }
-        }
-      }
-
-      if ((c === WHITE && state.castle.wq) || (c === BLACK && state.castle.bq)) {
-        if (b[y][1] === 0 && b[y][2] === 0 && b[y][3] === 0 && b[y][0] === 4 * c) {
-          if (!isSquareAttacked(state, 3, y, c) && !isSquareAttacked(state, 2, y, c)) {
-            out.push([x, y, 2, y, "castle"])
-          }
-        }
-      }
-    }
-  }
-
-  return out
-}
-
-function getLegalMoves(state, x, y, ply = 0, out = null) {
-  const pseudo = PSEUDO_POOL[ply]
-  pseudo.length = 0
-  generateMovesInto(state, x, y, pseudo)
-
-  const legal = out || []
-  legal.length = 0
-
-  const color = Math.sign(state.board[y][x])
-
-  for (let i = 0; i < pseudo.length; i++) {
-    const m = pseudo[i]
-    const undo = makeMove(state, m)
-    if (!isKingInCheck(state, color)) legal.push(m)
-    undoMove(state, undo)
-  }
-
-  return legal
-}
-
-function getAllMoves(state, color, ply = 0, out = null) {
-  const moves = out || MOVE_POOL[ply]
-  moves.length = 0
-
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      if (state.board[y][x] * color > 0) {
-        const pieceMoves = getLegalMoves(state, x, y, ply)
-        for (let m of pieceMoves) moves.push(m)
-      }
-    }
-  }
-
-  return moves
-}
-
-/* =========================
-  MAKE / UNDO
-========================= */
-
-function makeMove(state, m) {
-  const b = state.board
-  const fromX = m[0], fromY = m[1], toX = m[2], toY = m[3]
-  const p = b[fromY][fromX]
-  const abs = Math.abs(p)
-  const sign = Math.sign(p)
-
-  const undo = {
-    move: [...m],
-    captured: b[toY][toX],
-    epCaptured: null,
-    promoted: null,
-    oldEnPassant: state.enPassant,
-    oldCastle: { ...state.castle },
-    oldKingPos: {
-      w: [...state.kingPos.w],
-      b: [...state.kingPos.b]
-    },
-    oldEval: state.eval,
-    oldHash: state.hash
-  }
-
-  // hash remove old transient state
-  if (state.enPassant) state.hash ^= epMask(state.enPassant)
-  state.hash ^= castleMask(state.castle)
-
-  // evaluation remove origin
-  state.eval -= (PIECE_VALUE[abs] + pstValue(p, fromX, fromY, sign)) * sign
-
-  // remove piece origin from hash
-  state.hash ^= ZOBRIST.pieces[pieceIndex(p)][fromY * 8 + fromX]
-
-  // capture normal
-  if (undo.captured) {
-    const cs = Math.sign(undo.captured)
-    const ca = Math.abs(undo.captured)
-    state.eval -= (PIECE_VALUE[ca] + pstValue(undo.captured, toX, toY, cs)) * cs
-    state.hash ^= ZOBRIST.pieces[pieceIndex(undo.captured)][toY * 8 + toX]
-  }
-
-  // move piece
-  b[toY][toX] = p
-  b[fromY][fromX] = 0
-
-  // en passant capture
-  if (m[4] === "ep") {
-    const capY = toY + (sign === WHITE ? 1 : -1)
-    undo.epCaptured = b[capY][toX]
-    if (undo.epCaptured) {
-      const cs = Math.sign(undo.epCaptured)
-      const ca = Math.abs(undo.epCaptured)
-      state.eval -= (PIECE_VALUE[ca] + pstValue(undo.epCaptured, toX, capY, cs)) * cs
-      state.hash ^= ZOBRIST.pieces[pieceIndex(undo.epCaptured)][capY * 8 + toX]
-      b[capY][toX] = 0
-    }
-  }
-
-  // promotion
-  if (m[4]?.startsWith("promo")) {
-    undo.promoted = p
-    const map = { promoQ: 1, promoR: 4, promoB: 2, promoN: 3 }
-    const newPiece = sign * map[m[4]]
-    b[toY][toX] = newPiece
-
-    state.eval += (PIECE_VALUE[Math.abs(newPiece)] + pstValue(newPiece, toX, toY, sign)) * sign
-    state.hash ^= ZOBRIST.pieces[pieceIndex(newPiece)][toY * 8 + toX]
-  } else {
-    state.eval += (PIECE_VALUE[abs] + pstValue(p, toX, toY, sign)) * sign
-    state.hash ^= ZOBRIST.pieces[pieceIndex(p)][toY * 8 + toX]
-  }
-
-  // king move
-  if (abs === 6) {
-    if (sign === WHITE) state.kingPos.w = [toX, toY]
-    else state.kingPos.b = [toX, toY]
-
-    if (sign === WHITE) {
-      state.castle.wk = false
-      state.castle.wq = false
-    } else {
-      state.castle.bk = false
-      state.castle.bq = false
-    }
-  }
-
-  // rook move/capture affects castling rights
-  if (fromX === 0 && fromY === 7) state.castle.wq = false
-  if (fromX === 7 && fromY === 7) state.castle.wk = false
-  if (fromX === 0 && fromY === 0) state.castle.bq = false
-  if (fromX === 7 && fromY === 0) state.castle.bk = false
-
-  if (toX === 0 && toY === 7) state.castle.wq = false
-  if (toX === 7 && toY === 7) state.castle.wk = false
-  if (toX === 0 && toY === 0) state.castle.bq = false
-  if (toX === 7 && toY === 0) state.castle.bk = false
-
-  // castling move
-  if (m[4] === "castle") {
-    if (toX === 6) {
-      const rook = b[toY][7]
-      b[toY][5] = rook
-      b[toY][7] = 0
-      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 7]
-      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 5]
-      state.eval -= (PIECE_VALUE[4] + pstValue(rook, 7, toY, sign)) * sign
-      state.eval += (PIECE_VALUE[4] + pstValue(rook, 5, toY, sign)) * sign
-    } else {
-      const rook = b[toY][0]
-      b[toY][3] = rook
-      b[toY][0] = 0
-      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 0]
-      state.hash ^= ZOBRIST.pieces[pieceIndex(rook)][toY * 8 + 3]
-      state.eval -= (PIECE_VALUE[4] + pstValue(rook, 0, toY, sign)) * sign
-      state.eval += (PIECE_VALUE[4] + pstValue(rook, 3, toY, sign)) * sign
-    }
-  }
-
-  // en passant new
-  if (abs === 5 && Math.abs(toY - fromY) === 2) {
-    const epY = fromY + (sign === WHITE ? -1 : 1)
-    state.enPassant = { x: fromX, y: epY }
-  } else {
-    state.enPassant = null
-  }
-
-  // hash add new transient state
-  state.hash ^= castleMask(state.castle)
-  if (state.enPassant) state.hash ^= epMask(state.enPassant)
-
-  state.turn = -state.turn
-  state.hash ^= ZOBRIST.turn
-
-  return undo
-}
-
-function undoMove(state, undo) {
-  const m = undo.move
-  const b = state.board
-  const fromX = m[0], fromY = m[1], toX = m[2], toY = m[3]
-
-  state.turn = -state.turn
-  state.enPassant = undo.oldEnPassant
-  state.castle = undo.oldCastle
-  state.kingPos.w = [...undo.oldKingPos.w]
-  state.kingPos.b = [...undo.oldKingPos.b]
-  state.eval = undo.oldEval
-  state.hash = undo.oldHash
-
-  if (m[4] === "castle") {
-    if (toX === 6) {
-      b[toY][7] = b[toY][5]
-      b[toY][5] = 0
-    } else {
-      b[toY][0] = b[toY][3]
-      b[toY][3] = 0
-    }
-  }
-
-  b[fromY][fromX] = undo.promoted !== null ? undo.promoted : b[toY][toX]
-  b[toY][toX] = undo.captured
-
-  if (m[4] === "ep") {
-    const sign = Math.sign(b[fromY][fromX])
-    const capY = toY + (sign === WHITE ? 1 : -1)
-    b[capY][toX] = undo.epCaptured
-  }
-}
-
-/* =========================
-  SEE / ORDERING
-========================= */
-
-const SEE_OCC = new Uint8Array(64)
-
 function see(state, move) {
-  const [fromX, fromY, toX, toY] = move
   const board = state.board
+  const fromX = move[0], fromY = move[1], toX = move[2], toY = move[3]
   const attacker = board[fromY][fromX]
   if (!attacker) return 0
 
-  const target = board[toY][toX]
   const side = Math.sign(attacker)
+  const target = board[toY][toX]
 
   let capX = toX
   let capY = toY
@@ -833,12 +979,7 @@ function see(state, move) {
     return 0
   }
 
-  SEE_OCC.fill(0)
-  for (let y = 0; y < 8; y++) {
-    for (let x = 0; x < 8; x++) {
-      SEE_OCC[y * 8 + x] = board[y][x] !== 0 ? 1 : 0
-    }
-  }
+  for (let i = 0; i < 64; i++) SEE_OCC[i] = board[i >> 3][i & 7] !== 0 ? 1 : 0
   SEE_OCC[fromY * 8 + fromX] = 0
   SEE_OCC[toY * 8 + toX] = 1
   if (move[4] === "ep") SEE_OCC[capY * 8 + capX] = 0
@@ -851,23 +992,49 @@ function see(state, move) {
     turn = -turn
     depth++
 
-    let bestX = -1, bestY = -1, bestValue = Infinity
+    let bestX = -1
+    let bestY = -1
+    let bestValue = 30000
 
     for (let y = 0; y < 8; y++) {
       for (let x = 0; x < 8; x++) {
         const p = board[y][x]
-        if (p * turn <= 0) continue
+        if (p === 0) continue
+        if (Math.sign(p) !== turn) continue
         if (!SEE_OCC[y * 8 + x]) continue
 
-        if (attacksSquareSEE(board, SEE_OCC, x, y, toX, toY)) {
-          const val = PIECE_VALUE[Math.abs(p)]
-          if (val < bestValue) {
-            bestValue = val
-            bestX = x
-            bestY = y
-          }
+        const abs = Math.abs(p)
+        let canAttack = false
+
+        if (abs === 5) {
+          const dir = turn === WHITE ? -1 : 1
+          canAttack = (toY - y === dir && Math.abs(toX - x) === 1)
+        } else if (abs === 3) {
+          const dx = Math.abs(toX - x)
+          const dy = Math.abs(toY - y)
+          canAttack = (dx === 1 && dy === 2) || (dx === 2 && dy === 1)
+        } else if (abs === 6) {
+          canAttack = Math.abs(toX - x) <= 1 && Math.abs(toY - y) <= 1
+        } else if (abs === 4) {
+          canAttack = (toX === x || toY === y)
+        } else if (abs === 2) {
+          canAttack = Math.abs(toX - x) === Math.abs(toY - y)
+        } else if (abs === 1) {
+          canAttack = (toX === x || toY === y || Math.abs(toX - x) === Math.abs(toY - y))
+        }
+
+        if (!canAttack) continue
+        if (!attacksSquareSEE(board, SEE_OCC, x, y, toX, toY)) continue
+
+        const val = PIECE_VALUE[abs]
+        if (val < bestValue) {
+          bestValue = val
+          bestX = x
+          bestY = y
+          if (bestValue === 100) break
         }
       }
+      if (bestValue === 100) break
     }
 
     if (bestX === -1) break
@@ -879,7 +1046,8 @@ function see(state, move) {
   }
 
   for (let i = depth - 1; i >= 0; i--) {
-    gain[i] = -Math.max(-gain[i], gain[i + 1] !== undefined ? gain[i + 1] : -gain[i])
+    const next = gain[i + 1]
+    gain[i] = -Math.max(-gain[i], next !== undefined ? next : -gain[i])
   }
 
   return gain[0]
@@ -894,6 +1062,10 @@ function sameMove(a, b) {
     a[4] === b[4]
 }
 
+/* =========================================================
+   ENGINE
+========================================================= */
+
 const Engine = {
   tt: new Map(),
   history: Array.from({ length: 64 }, () => Array(64).fill(0)),
@@ -904,45 +1076,55 @@ const Engine = {
     return state.eval
   },
 
+  canNullMove(state, color) {
+    const start = color === WHITE ? 0 : 6
+    const nonPawnMaterial =
+      state.bb.pieces[start + 1] |
+      state.bb.pieces[start + 2] |
+      state.bb.pieces[start + 3] |
+      state.bb.pieces[start + 4]
+    return nonPawnMaterial !== 0n
+  },
+
   orderMoves(state, moves, ply) {
     const scored = []
     const entry = this.tt.get(state.hash >>> 0)
     const pvMove = entry?.bestMove || null
+    const board = state.board
+    const killers = this.killerMoves[ply]
 
     for (let i = 0; i < moves.length; i++) {
       const m = moves[i]
-      const from = m[1] * 8 + m[0]
-      const to = m[3] * 8 + m[2]
-      const target = state.board[m[3]][m[2]]
+      const fromX = m[0], fromY = m[1], toX = m[2], toY = m[3]
+      const from = fromY * 8 + fromX
+      const to = toY * 8 + toX
+      const attacker = board[fromY][fromX]
+      const target = board[toY][toX]
       const isCapture = target !== 0 || m[4] === "ep"
-      const isPromo = !!m[4] && String(m[4]).startsWith("promo")
+      const promo = m[4]
       let score = 0
 
       if (pvMove && sameMove(m, pvMove)) score += 200000
 
-      if (isPromo) {
+      if (promo) {
         score += 80000
-        if (m[4] === "promoQ") score += 9000
-        if (m[4] === "promoR") score += 5000
-        if (m[4] === "promoB") score += 3000
-        if (m[4] === "promoN") score += 3000
+        if (promo === "promoQ") score += 9000
+        else if (promo === "promoR") score += 5000
+        else score += 3000
       }
 
       if (isCapture) {
-        const victim = target ? PIECE_VALUE[Math.abs(target)] : PIECE_VALUE[5]
-        const attacker = PIECE_VALUE[Math.abs(state.board[m[1]][m[0]])]
-        score += 10000 + victim * 10 - attacker + see(state, m)
+        const victimValue = target ? PIECE_VALUE[Math.abs(target)] : PIECE_VALUE[5]
+        const attackerValue = PIECE_VALUE[Math.abs(attacker)]
+        score += 10000 + victimValue * 10 - attackerValue + see(state, m)
       }
 
-      if (sameMove(m, this.killerMoves[ply][0])) score += 9000
-      if (sameMove(m, this.killerMoves[ply][1])) score += 8000
+      if (sameMove(m, killers[0])) score += 9000
+      if (sameMove(m, killers[1])) score += 8000
       score += this.history[from][to]
 
-      if (!isCapture && !isPromo) {
-        const undo = makeMove(state, m)
-        const givesCheck = isKingInCheck(state, -state.turn)
-        undoMove(state, undo)
-        if (givesCheck) score += 5000
+      if (!isCapture && !promo && givesCheckAfterMove(state, m, attacker > 0 ? WHITE : BLACK)) {
+        score += 5000
       }
 
       scored.push([score, m])
@@ -970,7 +1152,6 @@ const Engine = {
       const isCap = state.board[m[3]][m[2]] !== 0 || m[4] === "ep"
       const isPromo = !!m[4] && String(m[4]).startsWith("promo")
       if (!isCap && !isPromo) continue
-
       if (isCap && see(state, m) < 0) continue
 
       const undo = makeMove(state, m)
@@ -1007,8 +1188,8 @@ const Engine = {
 
     if (depth <= 0) return this.quiescence(state, alpha, beta, color, ply, deadline)
 
-    if (!inCheck && depth >= 4) {
-      const R = depth >= 7 ? 2 : 1
+    if (!inCheck && depth >= 4 && this.canNullMove(state, color)) {
+      const R = depth >= 8 ? 2 : 1
       const prevTurn = state.turn
       const prevHash = state.hash
 
@@ -1049,7 +1230,7 @@ const Engine = {
 
       let score
       if (
-        moveCount >= 3 &&
+        moveCount >= 4 &&
         depth >= 4 &&
         !inCheck &&
         !isCapture &&
@@ -1161,6 +1342,11 @@ const Engine = {
       best = result.move
     }
 
+    if (!best) {
+      const fallback = this.getAllMoves(state, state.turn, 0)
+      best = fallback.length ? fallback[0] : null
+    }
+
     return best
   },
 
@@ -1169,12 +1355,9 @@ const Engine = {
   }
 }
 
-/* =========================
-  RENDER
-========================= */
-
-const sprite = new Image()
-sprite.src = "chess_pieces.png"
+/* =========================================================
+   UI
+========================================================= */
 
 let animation = null
 let selected = null
@@ -1187,20 +1370,24 @@ function updateEvalOrientation() {
   if (playerColor === WHITE) {
     evalContainer.classList.add("eval-white-top")
     evalContainer.classList.remove("eval-white-bottom")
-    evalTextWhite.style.top = "auto"
-    evalTextWhite.style.bottom = "5px"
+
+    evalTextWhite.style.top = "5px"
+    evalTextWhite.style.bottom = "auto"
     evalTextWhite.style.color = "black"
-    evalTextBlack.style.bottom = "auto"
-    evalTextBlack.style.top = "5px"
+
+    evalTextBlack.style.bottom = "5px"
+    evalTextBlack.style.top = "auto"
     evalTextBlack.style.color = "white"
   } else {
     evalContainer.classList.add("eval-white-bottom")
     evalContainer.classList.remove("eval-white-top")
-    evalTextWhite.style.bottom = "auto"
-    evalTextWhite.style.top = "5px"
+
+    evalTextWhite.style.bottom = "5px"
+    evalTextWhite.style.top = "auto"
     evalTextWhite.style.color = "black"
-    evalTextBlack.style.top = "auto"
-    evalTextBlack.style.bottom = "5px"
+
+    evalTextBlack.style.top = "5px"
+    evalTextBlack.style.bottom = "auto"
     evalTextBlack.style.color = "white"
   }
 }
@@ -1287,9 +1474,7 @@ function drawBoard(animT = null) {
     for (let x = 0; x < 8; x++) {
       const p = b[y][x]
       if (!p) continue
-
       if (animation && x === animation.move[0] && y === animation.move[1]) continue
-
       const [ox, oy] = orient(x, y)
       drawPiece(p, ox, oy)
     }
@@ -1323,10 +1508,10 @@ function showPromotionUI(gx, gy, moves) {
   promoBox.style.display = "block"
 
   const pieces = [
-    { type:"promoQ", imgIndex:1 },
-    { type:"promoR", imgIndex:4 },
-    { type:"promoB", imgIndex:2 },
-    { type:"promoN", imgIndex:3 },
+    { type: "promoQ", imgIndex: 1 },
+    { type: "promoR", imgIndex: 4 },
+    { type: "promoB", imgIndex: 2 },
+    { type: "promoN", imgIndex: 3 }
   ]
 
   for (const p of pieces) {
@@ -1345,7 +1530,7 @@ function showPromotionUI(gx, gy, moves) {
       promotionUI = null
       selected = null
       possibleMoves = []
-      startAnimation(chosen)
+      if (chosen) startAnimation(chosen)
     }
 
     promoBox.appendChild(img)
@@ -1377,9 +1562,7 @@ function animate(time) {
     makeMove(state, animation.move)
     lastMove = animation.move
     animation = null
-
     thinking = false
-
     drawBoard()
     endTurn()
     return
@@ -1389,9 +1572,9 @@ function animate(time) {
   requestAnimationFrame(animate)
 }
 
-/* =========================
-  INPUT / TURN
-========================= */
+/* =========================================================
+   TURN / INPUT
+========================================================= */
 
 function endTurn() {
   drawBoard()
@@ -1401,8 +1584,11 @@ function endTurn() {
     thinking = true
     setTimeout(() => {
       const botMove = Engine.getBestMove(state, BOT_MAX_DEPTH, BOT_TIME_LIMIT_MS)
-      if (botMove) startAnimation(botMove)
-      else thinking = false
+      if (botMove) {
+        startAnimation(botMove)
+      } else {
+        thinking = false
+      }
     }, BOT_THINK_DELAY)
   }
 }
@@ -1448,12 +1634,13 @@ canvas.addEventListener("click", e => {
   }
 })
 
-/* =========================
-  START
-========================= */
+/* =========================================================
+   START
+========================================================= */
 
 sprite.onload = () => {
   initAttackTables()
+  state.bb = createBitboardsFromBoard(state.board)
   initEval(state)
   state.hash = hash(state)
   updateEvalOrientation()
@@ -1462,6 +1649,5 @@ sprite.onload = () => {
   endTurn()
 }
 </script>
-
 </body>
 </html>
